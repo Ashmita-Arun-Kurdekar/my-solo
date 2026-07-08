@@ -9,16 +9,16 @@ const getAllProjects = async () => {
       p.project_name,
       p.description,
       p.manager_id,
-      p.department_id, 
+      p.department_id,
       e.full_name AS manager,
       d.department_name,
       p.start_date,
       p.end_date,
       p.status
     FROM projects p
-    JOIN employees e
+    LEFT JOIN employees e
       ON p.manager_id = e.employee_id
-    JOIN departments d
+    LEFT JOIN departments d
       ON p.department_id = d.department_id
     ORDER BY p.project_id;
   `;
@@ -40,9 +40,9 @@ const getProjectsByManager = async (managerId) => {
       p.end_date,
       p.status
     FROM projects p
-    JOIN employees e
+    LEFT JOIN employees e
       ON p.manager_id = e.employee_id
-    JOIN departments d
+    LEFT JOIN departments d
       ON p.department_id = d.department_id
     WHERE p.manager_id = $1
     ORDER BY p.project_id;
@@ -133,10 +133,36 @@ const deleteProject = async (id) => {
 
   return await pool.query(query, [id]);
 };
+// Get Project By ID
+const getProjectById = async (id) => {
+  const query = `
+    SELECT
+      p.project_id,
+      p.project_name,
+      p.description,
+      p.manager_id,
+      p.department_id,
+      e.full_name AS manager,
+      d.department_name,
+      p.start_date,
+      p.end_date,
+      p.status
+    FROM projects p
+    LEFT JOIN employees e
+      ON p.manager_id = e.employee_id
+    LEFT JOIN departments d
+      ON p.department_id = d.department_id
+    WHERE p.project_id = $1
+    LIMIT 1;
+  `;
+
+  return await pool.query(query, [id]);
+};
 module.exports = {
   getAllProjects,
   getProjectsByManager,
   createProject,
   updateProject,
   deleteProject,
+  getProjectById,
 };

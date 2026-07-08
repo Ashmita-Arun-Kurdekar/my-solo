@@ -36,7 +36,7 @@ function Projects() {
   const fetchProjects = async () => {
     try {
       const data = await getProjects();
-      setProjects(data.projects);
+      setProjects(Array.isArray(data?.projects) ? data.projects : []);
     } catch (error) {
       console.error(error);
       alert("Failed to load projects");
@@ -46,7 +46,7 @@ function Projects() {
   const fetchManagers = async () => {
     try {
       const data = await getManagers();
-      setManagers(data.managers);
+      setManagers(Array.isArray(data?.managers) ? data.managers : []);
     } catch (error) {
       console.error(error);
     }
@@ -55,7 +55,7 @@ function Projects() {
   const fetchDepartments = async () => {
     try {
       const data = await getDepartments();
-      setDepartments(data.departments);
+      setDepartments(Array.isArray(data?.departments) ? data.departments : []);
     } catch (error) {
       console.error(error);
     }

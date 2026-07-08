@@ -1,12 +1,11 @@
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
 import DashboardContent from "../components/DashboardContent";
+import SidebarAdmin from "../components/SidebarAdmin";
+import Navbar from "../components/Navbar";
 
-function Dashboard() {
+function AdminDashboard() {
   return (
     <div className="d-flex app-shell">
-      <Sidebar />
-
+      <SidebarAdmin />
       <div className="flex-grow-1">
         <Navbar />
         <DashboardContent />
@@ -15,4 +14,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export default AdminDashboard;

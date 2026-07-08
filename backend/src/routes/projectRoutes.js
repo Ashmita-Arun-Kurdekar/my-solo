@@ -9,10 +9,13 @@ const {
   addProject,
   editProject,
   removeProject,
+  getProjectByIdController,
 } = require("../controllers/projectController");
 
 // Protected Routes
 router.get("/", verifyToken, getProjects);
+
+router.get("/:id", verifyToken, getProjectByIdController);
 
 router.post("/", verifyToken, addProject);
 
