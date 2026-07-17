@@ -50,6 +50,18 @@ const getProjectsByManager = async (managerId) => {
 
   return await pool.query(query, [managerId]);
 };
+const getProjectsByEmployee = async (employeeId) => {
+  const query = `
+    SELECT DISTINCT p.project_id, p.project_name, p.description, p.manager_id, p.department_id,
+      e.full_name AS manager, d.department_name, p.start_date, p.end_date, p.status
+    FROM projects p
+    JOIN tasks t ON t.project_id = p.project_id
+    LEFT JOIN employees e ON p.manager_id = e.employee_id
+    LEFT JOIN departments d ON p.department_id = d.department_id
+    WHERE t.assigned_to = $1
+    ORDER BY p.project_id;`;
+  return pool.query(query, [employeeId]);
+};
 // Create Project
 const createProject = async (
   project_name,
@@ -161,6 +173,7 @@ const getProjectById = async (id) => {
 module.exports = {
   getAllProjects,
   getProjectsByManager,
+  getProjectsByEmployee,
   createProject,
   updateProject,
   deleteProject,

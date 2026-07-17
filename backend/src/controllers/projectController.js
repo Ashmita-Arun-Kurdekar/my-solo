@@ -1,6 +1,7 @@
 const {
   getAllProjects,
   getProjectsByManager,
+  getProjectsByEmployee,
   createProject,
   updateProject,
   deleteProject,
@@ -60,7 +61,7 @@ const getProjects = async (req, res) => {
     } else if (Number(role_id) === 2) {
       result = await getProjectsByManager(employee_id);
     } else {
-      result = await getAllProjects();
+      result = await getProjectsByEmployee(employee_id);
     }
 
     res.json({
@@ -89,14 +90,15 @@ const addProject = async (req, res) => {
       });
     }
 
-    // remaining code...
-
     const normalized = normalizeProjectPayload(req.body);
 
     // Basic validation
     if (!normalized.project_name || normalized.project_name.length === 0) {
       return res.status(400).json({ success: false, message: "Project name is required." });
     }
+    if (!normalized.manager_id || !normalized.department_id || !normalized.start_date || !normalized.end_date) return res.status(400).json({ success: false, message: "Manager, department, start date, and end date are required." });
+    if (normalized.end_date < normalized.start_date) return res.status(400).json({ success: false, message: "End date cannot be before the start date." });
+    if (Number(req.user.role_id) === 2 && normalized.manager_id !== Number(req.user.employee_id)) return res.status(403).json({ success: false, message: "Managers can only create projects assigned to themselves." });
 
     const result = await createProject(
       normalized.project_name,
@@ -143,6 +145,12 @@ const editProject = async (req, res) => {
     if (!normalized.project_name || normalized.project_name.length === 0) {
       return res.status(400).json({ success: false, message: "Project name is required." });
     }
+    if (!normalized.manager_id || !normalized.department_id || !normalized.start_date || !normalized.end_date) return res.status(400).json({ success: false, message: "Manager, department, start date, and end date are required." });
+    if (normalized.end_date < normalized.start_date) return res.status(400).json({ success: false, message: "End date cannot be before the start date." });
+    const current = await getProjectById(id);
+    if (!current.rows.length) return res.status(404).json({ success: false, message: "Project not found" });
+    if (Number(req.user.role_id) === 2 && Number(current.rows[0].manager_id) !== Number(req.user.employee_id)) return res.status(403).json({ success: false, message: "You can only update your assigned projects." });
+    if (Number(req.user.role_id) === 2 && normalized.manager_id !== Number(req.user.employee_id)) return res.status(403).json({ success: false, message: "Managers cannot reassign a project to another manager." });
 
     const result = await updateProject(
       id,
@@ -169,6 +177,10 @@ const editProject = async (req, res) => {
   } catch (error) {
     console.error(error);
 
+    if (error.code === "23503") {
+      return res.status(409).json({ success: false, message: "This project has assigned tasks and cannot be deleted until those tasks are removed." });
+    }
+
     res.status(500).json({
       success: false,
       message: error.message,
@@ -192,6 +204,9 @@ const removeProject = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid project id." });
     }
 
+    const current = await getProjectById(id);
+    if (!current.rows.length) return res.status(404).json({ success: false, message: "Project not found" });
+    if (Number(req.user.role_id) === 2 && Number(current.rows[0].manager_id) !== Number(req.user.employee_id)) return res.status(403).json({ success: false, message: "You can only delete your assigned projects." });
     const result = await deleteProject(id);
 
     if (result.rows.length === 0) {

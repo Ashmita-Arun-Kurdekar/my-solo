@@ -12,3 +12,4 @@ export const deleteEmployee = async (id) => {
 export const updateEmployee = async (id, employeeData) => {
   return await API.put(`/employees/${id}`, employeeData);
 };
+export const createEmployee = async (employeeData) => (await API.post("/employees", employeeData)).data;

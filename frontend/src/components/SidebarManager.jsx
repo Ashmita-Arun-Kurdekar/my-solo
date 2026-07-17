@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 const links = [
   { to: "/manager", label: "Dashboard", icon: "bi-speedometer2" },
   { to: "/projects", label: "Projects", icon: "bi-briefcase" },
-  { to: "/employees", label: "Team", icon: "bi-people" },
+  { to: "/team", label: "My Team", icon: "bi-people" },
   { to: "/tasks", label: "Tasks", icon: "bi-check2-square" },
 ];
 

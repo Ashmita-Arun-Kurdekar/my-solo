@@ -1,7 +1,14 @@
 import { motion } from "../lib/motionShim";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function Navbar() {
-  const employee = JSON.parse(localStorage.getItem("employee") || "null");
+  const { user: employee, logout } = useAuth();
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <motion.nav initial={{ y: -12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.3 }} className="navbar px-4 py-3 border-bottom" style={{ background: "rgba(7, 14, 29, 0.7)", backdropFilter: "blur(16px)" }}>
@@ -24,6 +31,9 @@ function Navbar() {
             <div className="small text-white-50">{employee?.email || "team@company.com"}</div>
           </div>
         </div>
+        <button className="btn btn-outline-danger btn-sm rounded-pill" onClick={handleLogout}>
+          <i className="bi bi-box-arrow-right me-2" />Logout
+        </button>
       </div>
     </motion.nav>
   );

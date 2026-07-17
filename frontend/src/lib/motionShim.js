@@ -38,9 +38,17 @@ const createMotionElement = (tag) => {
   });
 };
 
+// React reconciliation relies on component identity. Keep one component type
+// per HTML tag so state updates do not remount every motion wrapper.
+const motionElements = new Map();
+
 const handler = {
   get(_, prop) {
-    return createMotionElement(prop);
+    if (!motionElements.has(prop)) {
+      motionElements.set(prop, createMotionElement(prop));
+    }
+
+    return motionElements.get(prop);
   },
 };
 

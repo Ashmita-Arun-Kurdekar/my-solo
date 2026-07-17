@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
+import { useAuth } from "../context/AuthContext";
+import SidebarAdmin from "../components/SidebarAdmin";
+import SidebarManager from "../components/SidebarManager";
+import SidebarEmployee from "../components/SidebarEmployee";
 
 import {
   getProjects,
@@ -12,6 +15,9 @@ import {
 } from "../services/projectService";
 
 function Projects() {
+  const { user } = useAuth();
+  const canManage = [1, 2].includes(Number(user?.role));
+  const Sidebar = Number(user?.role) === 1 ? SidebarAdmin : Number(user?.role) === 2 ? SidebarManager : SidebarEmployee;
   const [projects, setProjects] = useState([]);
   const [managers, setManagers] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -29,8 +35,10 @@ function Projects() {
 
   useEffect(() => {
     fetchProjects();
-    fetchManagers();
-    fetchDepartments();
+    if (canManage) {
+      fetchManagers();
+      fetchDepartments();
+    }
   }, []);
 
   const fetchProjects = async () => {
@@ -72,6 +80,11 @@ function Projects() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!formData.project_name.trim() || !formData.manager_id || !formData.department_id || !formData.start_date || !formData.end_date) {
+      return alert("Project name, manager, department, start date, and end date are required.");
+    }
+    if (formData.end_date < formData.start_date) return alert("End date cannot be before the start date.");
+
     try {
       await createProject(formData);
 
@@ -104,6 +117,8 @@ function Projects() {
 
   // Update Project
   const handleUpdate = async () => {
+    if (!formData.project_name.trim() || !formData.manager_id || !formData.department_id || !formData.start_date || !formData.end_date) return alert("Project name, manager, department, start date, and end date are required.");
+    if (formData.end_date < formData.start_date) return alert("End date cannot be before the start date.");
     try {
       await updateProject(editingProject.project_id, formData);
 
@@ -165,7 +180,7 @@ function Projects() {
 
           <h2 className="mb-4">Projects</h2>
 
-          <div className="card shadow p-4 mb-4">
+          {canManage && <div className="card shadow p-4 mb-4">
 
             <h4>
               {editingProject ? "Edit Project" : "Create Project"}
@@ -203,7 +218,7 @@ function Projects() {
               >
                 <option value="">Select Manager</option>
 
-                {managers.map((manager) => (
+                {managers.filter((manager) => Number(user?.role) === 1 || Number(manager.employee_id) === Number(user?.id)).map((manager) => (
                   <option
                     key={manager.employee_id}
                     value={manager.employee_id}
@@ -290,7 +305,7 @@ function Projects() {
 
             </form>
 
-          </div>
+          </div>}
 
           <table className="table table-bordered table-striped shadow">
 
@@ -301,7 +316,7 @@ function Projects() {
                 <th>Manager</th>
                 <th>Department</th>
                 <th>Status</th>
-                <th width="180">Actions</th>
+                {canManage && <th width="180">Actions</th>}
               </tr>
             </thead>
 
@@ -316,7 +331,7 @@ function Projects() {
                     <td>{project.department_name}</td>
                     <td>{project.status}</td>
 
-                    <td>
+                    {canManage && <td>
                       <button
                         className="btn btn-warning btn-sm me-2"
                         onClick={() => handleEdit(project)}
@@ -332,13 +347,13 @@ function Projects() {
                       >
                         Delete
                       </button>
-                    </td>
+                    </td>}
 
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center">
+                  <td colSpan={canManage ? "6" : "5"} className="text-center">
                     No Projects Found
                   </td>
                 </tr>

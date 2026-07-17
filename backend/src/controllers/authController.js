@@ -27,7 +27,13 @@ const registerEmployee = async (req, res) => {
       department_id,
     } = req.body;
 
-    const existing = await findEmployeeByEmail(email);
+    if (!full_name?.trim() || !email?.trim() || !password || !designation?.trim() || !role_id || !department_id) {
+      return res.status(400).json({ success: false, message: "Name, email, password, designation, role, and department are required." });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters." });
+    }
+    const existing = await findEmployeeByEmail(email.trim().toLowerCase());
 
     if (existing.rows.length > 0) {
       return res.status(400).json({
@@ -39,8 +45,8 @@ const registerEmployee = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await createEmployee(
-      full_name,
-      email,
+      full_name.trim(),
+      email.trim().toLowerCase(),
       hashedPassword,
       phone,
       designation,

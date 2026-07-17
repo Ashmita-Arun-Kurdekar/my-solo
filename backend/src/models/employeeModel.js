@@ -49,10 +49,13 @@ const getAllEmployees = async () => {
       email,
       phone,
       designation,
-      role_id,
-      department_id
-    FROM employees
-    ORDER BY employee_id;
+      e.role_id,
+      e.department_id,
+      CASE e.role_id WHEN 1 THEN 'Admin' WHEN 2 THEN 'Manager' ELSE 'Employee' END AS role_name,
+      d.department_name
+    FROM employees e
+    LEFT JOIN departments d ON d.department_id = e.department_id
+    ORDER BY e.employee_id;
   `;
 
   return await pool.query(query);

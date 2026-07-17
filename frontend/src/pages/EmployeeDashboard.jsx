@@ -1,17 +1,13 @@
-import DashboardContent from "../components/DashboardContent";
-import SidebarEmployee from "../components/SidebarEmployee";
-import Navbar from "../components/Navbar";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { getTasks } from "../services/taskService";
+import { getProjects } from "../services/projectService";
 
-function EmployeeDashboard() {
-  return (
-    <div className="d-flex app-shell">
-      <SidebarEmployee />
-      <div className="flex-grow-1">
-        <Navbar />
-        <DashboardContent />
-      </div>
-    </div>
-  );
+const Stat = ({ icon, label, value, color }) => <div className="col-sm-6 col-xl-3"><div className="card glass-panel soft-card h-100 p-3"><div className="d-flex justify-content-between"><div><div className="text-white-50 small">{label}</div><div className="display-6 fw-semibold">{value}</div></div><i className={`bi ${icon} fs-3 text-${color}`} /></div></div></div>;
+export default function EmployeeDashboard() {
+  const { user } = useAuth(); const [tasks, setTasks] = useState([]), [projects, setProjects] = useState([]), [loading, setLoading] = useState(true);
+  useEffect(() => { Promise.all([getTasks(), getProjects()]).then(([t,p]) => { setTasks(t.tasks || []); setProjects(p.projects || []); }).finally(() => setLoading(false)); }, []);
+  const pending = tasks.filter(t=>t.status === "Pending").length, completed = tasks.filter(t=>t.status === "Completed").length, today = new Date().toISOString().slice(0,10), todayTasks = tasks.filter(t=>t.due_date?.slice(0,10) === today), upcoming = [...tasks].filter(t=>t.status !== "Completed").sort((a,b)=>new Date(a.due_date)-new Date(b.due_date)).slice(0,5), progress = tasks.length ? Math.round(completed / tasks.length * 100) : 0;
+  return <main className="container py-4"><section className="page-surface p-4 p-lg-5 mb-4"><span className="stat-pill px-3 py-1 small">Personal workspace</span><h1 className="mt-3 mb-1">Good morning, {user?.name || user?.full_name || "Employee"} <span role="img" aria-label="wave">👋</span></h1><p className="text-white-50 mb-0">Here’s a clear view of your work and deadlines.</p></section><div className="row g-3 mb-4"><Stat label="Assigned Tasks" value={loading ? "—" : tasks.length} icon="bi-list-task" color="info" /><Stat label="Pending Tasks" value={loading ? "—" : pending} icon="bi-hourglass-split" color="warning" /><Stat label="Completed Tasks" value={loading ? "—" : completed} icon="bi-check-circle" color="success" /><Stat label="Active Projects" value={loading ? "—" : projects.filter(p=>p.status === "Active").length} icon="bi-folder2-open" color="primary" /></div><div className="row g-4"><div className="col-lg-7"><section className="card glass-panel p-4 h-100"><div className="d-flex justify-content-between mb-3"><h5>Today’s Tasks</h5><Link to="/employee/tasks" className="small">View all</Link></div>{todayTasks.length ? todayTasks.map(t=><div key={t.task_id} className="d-flex justify-content-between align-items-center border-bottom border-secondary-subtle py-3"><div><strong>{t.task_title}</strong><div className="small text-white-50">{t.project_name}</div></div><span className="badge text-bg-primary">{t.status}</span></div>) : <div className="text-center py-4 text-white-50"><i className="bi bi-sun fs-3 d-block mb-2" />Nothing due today.</div>}</section></div><div className="col-lg-5"><section className="card glass-panel p-4 h-100"><h5 className="mb-3">Task Progress</h5><div className="display-6">{progress}%</div><div className="progress my-3" style={{height:10}}><div className="progress-bar bg-success" style={{width:`${progress}%`}} /></div><p className="text-white-50 small">{completed} of {tasks.length} tasks completed</p><Link className="btn btn-primary w-100" to="/employee/tasks"><i className="bi bi-arrow-right me-1" />Continue working</Link></section></div><div className="col-lg-7"><section className="card glass-panel p-4"><h5>Upcoming Deadlines</h5>{upcoming.length ? upcoming.map(t=><div key={t.task_id} className="d-flex justify-content-between border-bottom border-secondary-subtle py-3"><div><strong>{t.task_title}</strong><div className="small text-white-50">{t.project_name}</div></div><span className="small">{t.due_date?.slice(0,10)}</span></div>) : <p className="text-white-50 mb-0">No upcoming deadlines.</p>}</section></div><div className="col-lg-5"><section className="card glass-panel p-4"><h5>Quick Actions</h5><div className="d-grid gap-2"><Link className="btn btn-outline-light text-start" to="/employee/tasks"><i className="bi bi-check2-square me-2" />Update task status</Link><Link className="btn btn-outline-light text-start" to="/employee/projects"><i className="bi bi-folder me-2" />View my projects</Link><Link className="btn btn-outline-light text-start" to="/employee/calendar"><i className="bi bi-calendar3 me-2" />Check deadlines</Link></div></section></div></div></main>;
 }
-
-export default EmployeeDashboard;
