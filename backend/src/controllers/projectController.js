@@ -7,6 +7,10 @@ const {
   deleteProject,
   getProjectById,
 } = require("../models/projectModel");
+const { getManagers } = require("../models/employeeModel");
+const { getAllDepartments } = require("../models/departmentModel");
+
+const PROJECT_STATUSES = ["Active", "Completed", "On Hold"];
 
 const normalizeProjectPayload = (payload = {}) => {
   const parseOptionalNumber = (value) => {
@@ -92,12 +96,8 @@ const addProject = async (req, res) => {
 
     const normalized = normalizeProjectPayload(req.body);
 
-    // Basic validation
-    if (!normalized.project_name || normalized.project_name.length === 0) {
-      return res.status(400).json({ success: false, message: "Project name is required." });
-    }
-    if (!normalized.manager_id || !normalized.department_id || !normalized.start_date || !normalized.end_date) return res.status(400).json({ success: false, message: "Manager, department, start date, and end date are required." });
-    if (normalized.end_date < normalized.start_date) return res.status(400).json({ success: false, message: "End date cannot be before the start date." });
+    const validationError = await validateProject(normalized);
+    if (validationError) return res.status(400).json({ success: false, message: validationError });
     if (Number(req.user.role_id) === 2 && normalized.manager_id !== Number(req.user.employee_id)) return res.status(403).json({ success: false, message: "Managers can only create projects assigned to themselves." });
 
     const result = await createProject(
@@ -142,11 +142,8 @@ const editProject = async (req, res) => {
 
     const normalized = normalizeProjectPayload(req.body);
 
-    if (!normalized.project_name || normalized.project_name.length === 0) {
-      return res.status(400).json({ success: false, message: "Project name is required." });
-    }
-    if (!normalized.manager_id || !normalized.department_id || !normalized.start_date || !normalized.end_date) return res.status(400).json({ success: false, message: "Manager, department, start date, and end date are required." });
-    if (normalized.end_date < normalized.start_date) return res.status(400).json({ success: false, message: "End date cannot be before the start date." });
+    const validationError = await validateProject(normalized);
+    if (validationError) return res.status(400).json({ success: false, message: validationError });
     const current = await getProjectById(id);
     if (!current.rows.length) return res.status(404).json({ success: false, message: "Project not found" });
     if (Number(req.user.role_id) === 2 && Number(current.rows[0].manager_id) !== Number(req.user.employee_id)) return res.status(403).json({ success: false, message: "You can only update your assigned projects." });
@@ -176,10 +173,6 @@ const editProject = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-
-    if (error.code === "23503") {
-      return res.status(409).json({ success: false, message: "This project has assigned tasks and cannot be deleted until those tasks are removed." });
-    }
 
     res.status(500).json({
       success: false,
@@ -223,6 +216,10 @@ const removeProject = async (req, res) => {
   } catch (error) {
     console.error(error);
 
+    if (error.code === "23503") {
+      return res.status(409).json({ success: false, message: "This project has assigned tasks and cannot be deleted until those tasks are removed." });
+    }
+
     res.status(500).json({
       success: false,
       message: error.message,
@@ -255,6 +252,31 @@ const getProjectByIdController = async (req, res) => {
   }
 };
 
+const validateProjectReferences = async ({ manager_id, department_id }) => {
+  const [managers, departments] = await Promise.all([getManagers(), getAllDepartments()]);
+
+  if (!managers.rows.some((manager) => Number(manager.employee_id) === manager_id)) {
+    return "Select a valid manager.";
+  }
+
+  if (!departments.rows.some((department) => Number(department.department_id) === department_id)) {
+    return "Select a valid department.";
+  }
+
+  return null;
+};
+
+const validateProject = async (project) => {
+  if (!project.project_name) return "Project name is required.";
+  if (!project.manager_id || !project.department_id || !project.start_date || !project.end_date) {
+    return "Manager, department, start date, and end date are required.";
+  }
+  if (project.end_date < project.start_date) return "End date cannot be before the start date.";
+  if (!PROJECT_STATUSES.includes(project.status)) return "Invalid project status.";
+
+  return validateProjectReferences(project);
+};
+
 module.exports = {
   getProjects,
   addProject,
@@ -263,4 +285,5 @@ module.exports = {
   getProjectByIdController,
   normalizeProjectPayload,
   authorizeProjectAccess,
+  validateProject,
 };

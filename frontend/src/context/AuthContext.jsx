@@ -17,7 +17,15 @@ export function AuthProvider({ children }) {
     const loggedInUser = response.data.employee;
     const accessToken = response.data.token;
 
-    // Persist token according to "remember" flag
+    // Never leave credentials from a different account in the other storage.
+    // The API client reads both stores, so stale credentials can otherwise make
+    // the visible user and the user authenticated by the API different.
+    localStorage.removeItem("token");
+    localStorage.removeItem("employee");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("employee");
+
+    // Persist token according to "remember" flag.
     if (options.remember) {
       localStorage.setItem("token", accessToken);
       localStorage.setItem("employee", JSON.stringify(loggedInUser));

@@ -1,17 +1,27 @@
-import DashboardContent from "../components/DashboardContent";
-import SidebarManager from "../components/SidebarManager";
-import Navbar from "../components/Navbar";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { getProjects } from "../services/projectService";
+import { getTasks } from "../services/taskService";
 
-function ManagerDashboard() {
-  return (
-    <div className="d-flex app-shell">
-      <SidebarManager />
-      <div className="flex-grow-1">
-        <Navbar />
-        <DashboardContent />
-      </div>
-    </div>
-  );
+const date = (value) => value ? new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "No date";
+export default function ManagerDashboard() {
+  const { user } = useAuth(); const [projects, setProjects] = useState([]); const [tasks, setTasks] = useState([]); const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const [projectResult, taskResult] = await Promise.allSettled([getProjects(), getTasks()]);
+      if (!active) return;
+      if (projectResult.status === "fulfilled") setProjects(projectResult.value.projects || []);
+      if (taskResult.status === "fulfilled") setTasks(taskResult.value.tasks || []);
+      setLoading(false);
+    };
+    load();
+    const refreshId = window.setInterval(load, 5000);
+    return () => { active = false; window.clearInterval(refreshId); };
+  }, []);
+  const data = useMemo(() => { const today = new Date(); const members = new Set(tasks.map((task) => task.assigned_to_id)); const complete = tasks.filter((task) => task.status === "Completed"); const open = tasks.filter((task) => task.status !== "Completed"); const overdue = open.filter((task) => task.due_date && new Date(task.due_date) < today); return { members: members.size, complete: complete.length, pending: tasks.filter((task) => task.status === "Pending").length, overdue: overdue.length, active: projects.filter((project) => project.status === "Active").length, progress: tasks.length ? Math.round((complete.length / tasks.length) * 100) : 0, upcoming: [...open].filter((task) => task.due_date).sort((a,b) => new Date(a.due_date)-new Date(b.due_date)).slice(0, 4) }; }, [projects, tasks]);
+  const cards = [["Total Projects", projects.length, "bi-folder2-open", "primary"], ["Active Projects", data.active, "bi-rocket-takeoff", "success"], ["Team Members", data.members, "bi-people", "info"], ["Pending Tasks", data.pending, "bi-hourglass-split", "warning"], ["Completed Tasks", data.complete, "bi-check2-circle", "success"], ["Overdue Tasks", data.overdue, "bi-exclamation-triangle", "danger"]];
+  if (loading) return <div className="manager-loading"><div className="spinner-border text-primary" /><span>Loading your workspace…</span></div>;
+  return <><section className="manager-welcome mb-4"><div><span className="badge text-bg-light text-primary mb-2">MANAGER DASHBOARD</span><h1>Good {new Date().getHours() < 12 ? "Morning" : "Afternoon"}, {user?.name || "Manager"} <span>👋</span></h1><p>Here is how your projects and team are moving today.</p></div><Link className="btn btn-primary" to="/manager/tasks"><i className="bi bi-plus-lg me-2" />Assign task</Link></section><section className="row g-3 mb-4">{cards.map(([label, value, icon, tone]) => <div className="col-6 col-md-4 col-xl-2" key={label}><div className="manager-stat-card"><span className={`manager-stat-icon text-bg-${tone}`}><i className={`bi ${icon}`} /></span><div><div className="manager-stat-value">{value}</div><div className="manager-stat-label">{label}</div></div></div></div>)}</section><section className="row g-4"><div className="col-xl-7"><div className="manager-panel h-100"><div className="d-flex justify-content-between align-items-center mb-3"><div><h5 className="mb-1">Project progress</h5><span className="text-white-50 small">Completion across assigned work</span></div><span className="fs-4 fw-bold">{data.progress}%</span></div><div className="progress manager-progress mb-4"><div className="progress-bar" style={{ width: `${data.progress}%` }} /></div>{projects.length ? projects.slice(0, 4).map((project) => { const own = tasks.filter((task) => task.project_id === project.project_id); const done = own.filter((task) => task.status === "Completed").length; const percentage = own.length ? Math.round(done / own.length * 100) : 0; return <div className="mb-3" key={project.project_id}><div className="d-flex justify-content-between small mb-2"><span>{project.project_name}</span><span className="text-white-50">{percentage}% · {project.status}</span></div><div className="progress manager-progress slim"><div className="progress-bar" style={{ width: `${percentage}%` }} /></div></div>; }) : <p className="text-white-50 mb-0">No assigned projects yet.</p>}</div></div><div className="col-xl-5"><div className="manager-panel h-100"><div className="d-flex justify-content-between align-items-center mb-3"><div><h5 className="mb-1">Upcoming deadlines</h5><span className="text-white-50 small">Tasks that need attention</span></div><Link className="small" to="/manager/calendar">View calendar</Link></div>{data.upcoming.length ? data.upcoming.map((task) => <div className="deadline-row" key={task.task_id}><span className="deadline-date">{date(task.due_date)}</span><div className="text-truncate"><div className="fw-semibold text-truncate">{task.task_title}</div><small className="text-white-50">{task.project_name} · {task.assigned_to}</small></div><span className={`badge ${task.priority === "High" ? "text-bg-danger" : "text-bg-secondary"}`}>{task.priority}</span></div>) : <p className="text-white-50 mb-0">No upcoming deadlines.</p>}</div></div><div className="col-xl-7"><div className="manager-panel"><h5>Recent team activity</h5><div className="manager-activity mt-3">{tasks.slice(0, 4).map((task) => <div key={task.task_id}><i className={`bi ${task.status === "Completed" ? "bi-check-circle-fill text-success" : "bi-arrow-right-circle text-primary"}`} /><span><strong>{task.assigned_to}</strong> · {task.task_title}</span><small>{task.status}</small></div>)}{!tasks.length && <p className="text-white-50 mb-0">Activity will appear as you assign tasks.</p>}</div></div></div><div className="col-xl-5"><div className="manager-panel"><h5>Quick actions</h5><div className="d-grid gap-2 mt-3"><Link className="btn btn-outline-light text-start" to="/manager/tasks"><i className="bi bi-person-plus me-2" />Assign a team task</Link><Link className="btn btn-outline-light text-start" to="/manager/team"><i className="bi bi-people me-2" />Review team workload</Link><Link className="btn btn-outline-light text-start" to="/manager/projects"><i className="bi bi-folder me-2" />View my projects</Link></div></div></div></section></>;
 }
-
-export default ManagerDashboard;
