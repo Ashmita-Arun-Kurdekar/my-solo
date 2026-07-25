@@ -1,4 +1,6 @@
 const tasks = require("../models/taskModel");
+const projects = require("../models/projectModel");
+const notifications = require("../models/notificationModel");
 
 const validStatuses = ["Pending", "In Progress", "Completed"];
 const validPriorities = ["High", "Medium", "Low"];
@@ -15,6 +17,15 @@ const validate = (data) => {
 };
 const canManage = async (user, projectId) => Number(user.role_id) === 1 || (Number(user.role_id) === 2 && (await require("../models/projectModel").getProjectById(projectId)).rows[0]?.manager_id === Number(user.employee_id));
 
+const notifyTaskAssignee = async (employeeId, title, message, notificationType) => {
+  try {
+    if (!Number.isInteger(Number(employeeId))) return;
+    await notifications.createNotification(employeeId, title, message, notificationType);
+  } catch (error) {
+    console.error("Notification creation failed:", error.message);
+  }
+};
+
 const getTasks = async (req, res) => {
   try {
     const role = Number(req.user.role_id);
@@ -27,7 +38,10 @@ const addTask = async (req, res) => {
     if (![1, 2].includes(Number(req.user.role_id))) return res.status(403).json({ success: false, message: "Only admins and managers can assign tasks." });
     const data = normalize(req.body); const error = validate(data); if (error) return res.status(400).json({ success: false, message: error });
     if (!(await canManage(req.user, data.project_id))) return res.status(403).json({ success: false, message: "You can only assign tasks in your projects." });
+    const projectResult = await projects.getProjectById(data.project_id);
     const result = await tasks.createTask(data.project_id, data.assigned_to, req.user.employee_id, data.task_title, data.description, data.priority, data.status, data.assigned_date, data.due_date);
+    const projectName = projectResult.rows[0]?.project_name || "your project";
+    await notifyTaskAssignee(data.assigned_to, "New task assigned", `You have been assigned \"${data.task_title}\" for ${projectName}.`, "task_assigned");
     res.status(201).json({ success: true, message: "Task created successfully", task: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
@@ -37,7 +51,10 @@ const editTask = async (req, res) => {
     const data = normalize(req.body); const error = validate(data); if (error) return res.status(400).json({ success: false, message: error });
     const current = await tasks.getTaskById(req.params.id); if (!current.rows.length) return res.status(404).json({ success: false, message: "Task not found" });
     if (!(await canManage(req.user, current.rows[0].project_id)) || !(await canManage(req.user, data.project_id))) return res.status(403).json({ success: false, message: "You can only update tasks in your projects." });
+    const projectResult = await projects.getProjectById(data.project_id);
     const result = await tasks.updateTask(req.params.id, data.project_id, data.assigned_to, data.task_title, data.description, data.priority, data.status, data.assigned_date, data.due_date);
+    const projectName = projectResult.rows[0]?.project_name || "your project";
+    await notifyTaskAssignee(data.assigned_to, "Task updated", `The task \"${data.task_title}\" in ${projectName} has been updated.`, "task_updated");
     res.json({ success: true, task: result.rows[0] });
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
@@ -55,6 +72,14 @@ const changeTaskStatus = async (req, res) => {
     const role = Number(req.user.role_id); const allowed = role === 1 || (role === 2 && await canManage(req.user, current.rows[0].project_id)) || (role === 3 && Number(current.rows[0].assigned_to_id) === Number(req.user.employee_id));
     if (!allowed) return res.status(403).json({ success: false, message: "You can only update tasks assigned to you." });
     const result = await tasks.updateTaskStatus(req.params.id, status); res.json({ success: true, task: result.rows[0] });
+    if (role === 1 || role === 2) {
+      await notifyTaskAssignee(
+        current.rows[0].assigned_to_id,
+        "Task status updated",
+        `The task \"${current.rows[0].task_title}\" is now marked as ${status}.`,
+        "task_status_updated"
+      );
+    }
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
 module.exports = { getTasks, addTask, editTask, removeTask, changeTaskStatus };

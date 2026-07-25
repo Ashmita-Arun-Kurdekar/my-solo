@@ -7,6 +7,8 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
 const taskRoutes = require("./routes/taskRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const allocationRoutes = require("./routes/allocationRoutes");
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/tasks", taskRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api", allocationRoutes);
 
 // Home Route
 app.get("/", (req, res) => {

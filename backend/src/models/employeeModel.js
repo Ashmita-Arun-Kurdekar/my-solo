@@ -40,6 +40,19 @@ const findEmployeeByEmail = async (email) => {
   return await pool.query(query, [email]);
 };
 
+const findEmployeeByEmailExcludingId = async (email, id) => pool.query(
+  "SELECT employee_id FROM employees WHERE email = $1 AND employee_id <> $2",
+  [email, id]
+);
+
+const updateEmployeeCredentials = async (id, email, passwordHash) => {
+  const fields = ["email = $1"];
+  const values = [email];
+  if (passwordHash) { fields.push("password = $2"); values.push(passwordHash); }
+  values.push(id);
+  return pool.query(`UPDATE employees SET ${fields.join(", ")} WHERE employee_id = $${values.length} RETURNING employee_id, full_name, email, role_id`, values);
+};
+
 // Get All Employees
 const getAllEmployees = async () => {
   const query = `
@@ -73,6 +86,25 @@ const getManagers = async () => {
   `;
 
   return await pool.query(query);
+};
+
+// Get Employee By ID
+const getEmployeeById = async (id) => {
+  const query = `
+    SELECT
+      employee_id,
+      full_name,
+      email,
+      phone,
+      designation,
+      role_id,
+      department_id
+    FROM employees
+    WHERE employee_id = $1
+    LIMIT 1;
+  `;
+
+  return await pool.query(query, [id]);
 };
 // Delete Employee
 const deleteEmployee = async (id) => {
@@ -117,8 +149,11 @@ const updateEmployee = async (
 module.exports = {
   createEmployee,
   findEmployeeByEmail,
+  findEmployeeByEmailExcludingId,
+  updateEmployeeCredentials,
   getAllEmployees,
   getManagers,
+  getEmployeeById,
   deleteEmployee,
   updateEmployee,
 };

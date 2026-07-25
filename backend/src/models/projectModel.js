@@ -15,6 +15,7 @@ const getAllProjects = async () => {
       p.start_date,
       p.end_date,
       p.status
+      , p.required_skills, p.required_roles, p.priority, p.maximum_team_size
     FROM projects p
     LEFT JOIN employees e
       ON p.manager_id = e.employee_id
@@ -39,6 +40,7 @@ const getProjectsByManager = async (managerId) => {
       p.start_date,
       p.end_date,
       p.status
+      , p.required_skills, p.required_roles, p.priority, p.maximum_team_size
     FROM projects p
     LEFT JOIN employees e
       ON p.manager_id = e.employee_id
@@ -53,7 +55,7 @@ const getProjectsByManager = async (managerId) => {
 const getProjectsByEmployee = async (employeeId) => {
   const query = `
     SELECT DISTINCT p.project_id, p.project_name, p.description, p.manager_id, p.department_id,
-      e.full_name AS manager, d.department_name, p.start_date, p.end_date, p.status
+      e.full_name AS manager, d.department_name, p.start_date, p.end_date, p.status, p.required_skills, p.required_roles, p.priority, p.maximum_team_size
     FROM projects p
     JOIN tasks t ON t.project_id = p.project_id
     LEFT JOIN employees e ON p.manager_id = e.employee_id
@@ -70,7 +72,7 @@ const createProject = async (
   department_id,
   start_date,
   end_date,
-  status
+  status, required_skills, required_roles, priority, maximum_team_size
 ) => {
 
   const query = `
@@ -82,9 +84,9 @@ const createProject = async (
       department_id,
       start_date,
       end_date,
-      status
+      status, required_skills, required_roles, priority, maximum_team_size
     )
-    VALUES($1,$2,$3,$4,$5,$6,$7)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
     RETURNING *;
   `;
 
@@ -96,6 +98,7 @@ const createProject = async (
     start_date,
     end_date,
     status,
+    required_skills || [], required_roles || [], priority || "Medium", maximum_team_size || 5
   ]);
 };
 // Update Project
@@ -107,7 +110,7 @@ const updateProject = async (
   department_id,
   start_date,
   end_date,
-  status
+  status, required_skills, required_roles, priority, maximum_team_size
 ) => {
   const query = `
     UPDATE projects
@@ -118,8 +121,8 @@ const updateProject = async (
       department_id = $4,
       start_date = $5,
       end_date = $6,
-      status = $7
-    WHERE project_id = $8
+      status = $7, required_skills = $8, required_roles = $9, priority = $10, maximum_team_size = $11
+    WHERE project_id = $12
     RETURNING *;
   `;
 
@@ -131,7 +134,7 @@ const updateProject = async (
     start_date,
     end_date,
     status,
-    id,
+    required_skills || [], required_roles || [], priority || "Medium", maximum_team_size || 5, id,
   ]);
 };
 
@@ -159,6 +162,7 @@ const getProjectById = async (id) => {
       p.start_date,
       p.end_date,
       p.status
+      , p.required_skills, p.required_roles, p.priority, p.maximum_team_size
     FROM projects p
     LEFT JOIN employees e
       ON p.manager_id = e.employee_id

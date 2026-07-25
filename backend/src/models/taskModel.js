@@ -11,6 +11,16 @@ const getAllTasks = () => pool.query(`${taskSelect} ORDER BY t.task_id`);
 const getTasksByEmployee = (employeeId) => pool.query(`${taskSelect} WHERE t.assigned_to = $1 ORDER BY t.task_id`, [employeeId]);
 const getTasksByManager = (managerId) => pool.query(`${taskSelect} WHERE p.manager_id = $1 ORDER BY t.task_id`, [managerId]);
 const getTaskById = (id) => pool.query(`${taskSelect} WHERE t.task_id = $1`, [id]);
+const getEmployeeIdsByProjectId = (projectId) => pool.query(
+  `SELECT DISTINCT assigned_to AS employee_id
+   FROM tasks
+   WHERE project_id = $1
+   UNION
+   SELECT DISTINCT employee_id
+   FROM project_members
+   WHERE project_id = $1`,
+  [projectId]
+);
 
 const createTask = (project_id, assigned_to, assigned_by, task_title, description, priority, status, assigned_date, due_date) =>
   pool.query(`INSERT INTO tasks (project_id, assigned_to, assigned_by, task_title, title, employee_id, description, priority, status, assigned_date, due_date)
@@ -25,4 +35,4 @@ const updateTaskStatus = (id, status) => pool.query(`UPDATE tasks SET status=$1,
   completed_date=CASE WHEN $2 = 'Completed' THEN COALESCE(completed_date, CURRENT_DATE) ELSE NULL END WHERE task_id=$3 RETURNING *`, [status, status, id]);
 const deleteTask = (id) => pool.query("DELETE FROM tasks WHERE task_id = $1 RETURNING *", [id]);
 
-module.exports = { getAllTasks, getTasksByEmployee, getTasksByManager, getTaskById, createTask, updateTask, updateTaskStatus, deleteTask };
+module.exports = { getAllTasks, getTasksByEmployee, getTasksByManager, getTaskById, getEmployeeIdsByProjectId, createTask, updateTask, updateTaskStatus, deleteTask };

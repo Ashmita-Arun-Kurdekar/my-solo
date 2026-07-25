@@ -8,18 +8,20 @@ import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Projects from "./pages/Projects";
 import Tasks from "./pages/Tasks";
-import AdminDashboard from "./pages/AdminDashboard";
+import AdminDashboard from "./pages/AdminDashboardOverview";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import ManagerLayout from "./components/ManagerLayout";
 import { ManagerCalendar, ManagerNotifications, ManagerProfile, ManagerProjects, ManagerTasks, ManagerTeam } from "./pages/ManagerPages";
 import AdminLayout from "./components/AdminLayout";
-import { AdminDepartments, AdminPeople, AdminReports, AdminUtility, AdminWork } from "./pages/AdminPages";
-import AdminProjects from "./pages/AdminProjects";
+import { AdminDepartments, AdminReports, AdminUtility, AdminWork } from "./pages/AdminPages";
+import AdminPeople from "./pages/AdminPeople";
+import AdminProjects from "./pages/AdminProjectPlanner";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeLayout from "./components/EmployeeLayout";
 import EmployeeTasks from "./pages/EmployeeTasks";
 import EmployeeProjects from "./pages/EmployeeProjects";
 import { EmployeeCalendar, EmployeeNotifications, EmployeeProfile } from "./pages/EmployeeUtility";
+import SmartAllocation from "./pages/SmartAllocation";
 
 function App() {
   return (
@@ -38,6 +40,7 @@ function App() {
           <Route path="/manager" element={<ProtectedRoute roles={[2]}><ManagerLayout /></ProtectedRoute>}>
             <Route index element={<ManagerDashboard />} />
             <Route path="projects" element={<ManagerProjects />} />
+            <Route path="allocation" element={<SmartAllocation />} />
             <Route path="tasks" element={<ManagerTasks />} />
             <Route path="team" element={<ManagerTeam />} />
             <Route path="calendar" element={<ManagerCalendar />} />

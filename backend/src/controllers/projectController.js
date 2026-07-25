@@ -9,6 +9,8 @@ const {
 } = require("../models/projectModel");
 const { getManagers } = require("../models/employeeModel");
 const { getAllDepartments } = require("../models/departmentModel");
+const tasks = require("../models/taskModel");
+const notifications = require("../models/notificationModel");
 
 const PROJECT_STATUSES = ["Active", "Completed", "On Hold"];
 
@@ -30,6 +32,10 @@ const normalizeProjectPayload = (payload = {}) => {
     start_date: payload.start_date?.toString().trim() || null,
     end_date: payload.end_date?.toString().trim() || null,
     status: payload.status?.toString().trim() || "Active",
+    required_skills: Array.isArray(payload.required_skills) ? payload.required_skills : String(payload.required_skills || "").split(",").map((skill) => skill.trim()).filter(Boolean),
+    required_roles: Array.isArray(payload.required_roles) ? payload.required_roles : String(payload.required_roles || "").split(",").map((role) => role.trim()).filter(Boolean),
+    priority: payload.priority?.toString().trim() || "Medium",
+    maximum_team_size: Math.max(1, parseOptionalNumber(payload.maximum_team_size) || 5),
   };
 };
 
@@ -45,6 +51,17 @@ const authorizeProjectAccess = (user = {}, action = "read") => {
   }
 
   return [1, 2, 3].includes(roleId);
+};
+
+const notifyProjectEmployees = async (projectId, title, message, notificationType) => {
+  try {
+    const recipients = await tasks.getEmployeeIdsByProjectId(projectId);
+    const uniqueRecipients = [...new Set(recipients.rows.map((row) => Number(row.employee_id)).filter(Number.isInteger))];
+
+    await Promise.all(uniqueRecipients.map((employeeId) => notifications.createNotification(employeeId, title, message, notificationType)));
+  } catch (error) {
+    console.error("Project notification creation failed:", error.message);
+  }
 };
 
 const getProjects = async (req, res) => {
@@ -108,6 +125,7 @@ const addProject = async (req, res) => {
       normalized.start_date,
       normalized.end_date,
       normalized.status
+      , normalized.required_skills, normalized.required_roles, normalized.priority, normalized.maximum_team_size
     );
 
     res.status(201).json({
@@ -158,6 +176,7 @@ const editProject = async (req, res) => {
       normalized.start_date,
       normalized.end_date,
       normalized.status
+      , normalized.required_skills, normalized.required_roles, normalized.priority, normalized.maximum_team_size
     );
 
     if (result.rows.length === 0) {
@@ -166,6 +185,13 @@ const editProject = async (req, res) => {
         message: "Project not found",
       });
     }
+
+    await notifyProjectEmployees(
+      id,
+      "Project updated",
+      `The project \"${normalized.project_name}\" has been updated by your manager.`,
+      "project_updated"
+    );
 
     res.json({
       success: true,
@@ -273,6 +299,7 @@ const validateProject = async (project) => {
   }
   if (project.end_date < project.start_date) return "End date cannot be before the start date.";
   if (!PROJECT_STATUSES.includes(project.status)) return "Invalid project status.";
+  if (!["Low", "Medium", "High", "Critical"].includes(project.priority)) return "Invalid project priority.";
 
   return validateProjectReferences(project);
 };

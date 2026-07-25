@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const links = [
-  ["/manager", "Dashboard", "bi-grid-1x2"], ["/manager/projects", "My Projects", "bi-folder2-open"], ["/manager/tasks", "Team Tasks", "bi-list-check"], ["/manager/team", "My Team", "bi-people"], ["/manager/calendar", "Calendar", "bi-calendar3"], ["/manager/notifications", "Notifications", "bi-bell"], ["/manager/profile", "My Profile", "bi-person-circle"],
+  ["/manager", "Dashboard", "bi-grid-1x2"], ["/manager/projects", "My Projects", "bi-folder2-open"], ["/manager/allocation", "Smart Allocation", "bi-stars"], ["/manager/tasks", "Team Tasks", "bi-list-check"], ["/manager/team", "My Team", "bi-people"], ["/manager/calendar", "Calendar", "bi-calendar3"], ["/manager/notifications", "Notifications", "bi-bell"], ["/manager/profile", "My Profile", "bi-person-circle"],
 ];
 export default function ManagerSidebar() {
   const { user, logout } = useAuth();

@@ -8,6 +8,7 @@ const {
   getManagersList,
   removeEmployee,
   editEmployee,
+  editCredentials,
 } = require("../controllers/employeeController");
 const verifyToken = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
@@ -16,4 +17,5 @@ router.get("/managers", verifyToken, authorizeRoles(1, 2), getManagersList);
 router.post("/", verifyToken, authorizeRoles(1), addEmployee);
 router.delete("/:id", verifyToken, authorizeRoles(1), removeEmployee);
 router.put("/:id", verifyToken, authorizeRoles(1), editEmployee);
+router.put("/:id/credentials", verifyToken, authorizeRoles(1), editCredentials);
 module.exports = router;

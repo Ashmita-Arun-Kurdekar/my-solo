@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const {
-  getAllEmployees, getManagers, deleteEmployee, updateEmployee, createEmployee, findEmployeeByEmail,
+  getAllEmployees, getManagers, deleteEmployee, updateEmployee, createEmployee, findEmployeeByEmail, findEmployeeByEmailExcludingId, updateEmployeeCredentials,
 } = require("../models/employeeModel");
 
 const getEmployees = async (req, res) => {
@@ -43,4 +43,18 @@ const editEmployee = async (req, res) => {
   } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 };
 
-module.exports = { getEmployees, addEmployee, getManagersList, removeEmployee, editEmployee };
+const editCredentials = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const email = req.body.email?.trim().toLowerCase();
+    const password = req.body.password;
+    if (!Number.isInteger(id) || !email) return res.status(400).json({ success: false, message: "A valid email is required." });
+    if (password && password.length < 8) return res.status(400).json({ success: false, message: "Password must be at least 8 characters." });
+    if ((await findEmployeeByEmailExcludingId(email, id)).rows.length) return res.status(409).json({ success: false, message: "Email already exists." });
+    const result = await updateEmployeeCredentials(id, email, password ? await bcrypt.hash(password, 10) : null);
+    if (!result.rows.length) return res.status(404).json({ success: false, message: "Employee not found." });
+    res.json({ success: true, employee: result.rows[0], message: "Credentials updated successfully." });
+  } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+};
+
+module.exports = { getEmployees, addEmployee, getManagersList, removeEmployee, editEmployee, editCredentials };
