@@ -15,7 +15,11 @@ const getAllProjects = async () => {
       p.start_date,
       p.end_date,
       p.status
-      , p.required_skills, p.required_roles, p.priority, p.maximum_team_size
+      , p.required_skills, p.required_roles, p.priority, p.maximum_team_size,
+      (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.project_id) AS member_count,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.project_id) AS task_count,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.project_id AND t.status = 'Completed') AS completed_task_count,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.project_id AND t.status <> 'Completed' AND t.due_date < CURRENT_DATE) AS overdue_task_count
     FROM projects p
     LEFT JOIN employees e
       ON p.manager_id = e.employee_id
@@ -40,7 +44,11 @@ const getProjectsByManager = async (managerId) => {
       p.start_date,
       p.end_date,
       p.status
-      , p.required_skills, p.required_roles, p.priority, p.maximum_team_size
+      , p.required_skills, p.required_roles, p.priority, p.maximum_team_size,
+      (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.project_id) AS member_count,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.project_id) AS task_count,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.project_id AND t.status = 'Completed') AS completed_task_count,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.project_id AND t.status <> 'Completed' AND t.due_date < CURRENT_DATE) AS overdue_task_count
     FROM projects p
     LEFT JOIN employees e
       ON p.manager_id = e.employee_id
@@ -55,12 +63,17 @@ const getProjectsByManager = async (managerId) => {
 const getProjectsByEmployee = async (employeeId) => {
   const query = `
     SELECT DISTINCT p.project_id, p.project_name, p.description, p.manager_id, p.department_id,
-      e.full_name AS manager, d.department_name, p.start_date, p.end_date, p.status, p.required_skills, p.required_roles, p.priority, p.maximum_team_size
+      e.full_name AS manager, d.department_name, p.start_date, p.end_date, p.status, p.required_skills, p.required_roles, p.priority, p.maximum_team_size,
+      (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.project_id) AS member_count,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.project_id) AS task_count,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.project_id AND t.status = 'Completed') AS completed_task_count,
+      (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.project_id AND t.status <> 'Completed' AND t.due_date < CURRENT_DATE) AS overdue_task_count
     FROM projects p
-    JOIN tasks t ON t.project_id = p.project_id
+    LEFT JOIN project_members pm ON pm.project_id = p.project_id
+    LEFT JOIN tasks t ON t.project_id = p.project_id
     LEFT JOIN employees e ON p.manager_id = e.employee_id
     LEFT JOIN departments d ON p.department_id = d.department_id
-    WHERE t.assigned_to = $1
+    WHERE p.manager_id = $1 OR pm.employee_id = $1 OR t.assigned_to = $1
     ORDER BY p.project_id;`;
   return pool.query(query, [employeeId]);
 };

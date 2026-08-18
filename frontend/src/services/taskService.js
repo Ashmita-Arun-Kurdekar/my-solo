@@ -25,3 +25,7 @@ export const getEmployees = async () => {
 export const updateTask = async (id, taskData) => (await API.put(`/tasks/${id}`, taskData)).data;
 export const deleteTask = async (id) => (await API.delete(`/tasks/${id}`)).data;
 export const updateTaskStatus = async (id, status) => (await API.patch(`/tasks/${id}/status`, { status })).data;
+
+export const getTaskUpdates = async (id) => (await API.get(`/tasks/${id}/updates`)).data;
+
+export const addTaskUpdate = async (id, payload) => (await API.post(`/tasks/${id}/updates`, payload)).data;

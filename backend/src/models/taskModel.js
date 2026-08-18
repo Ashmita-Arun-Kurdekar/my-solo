@@ -22,6 +22,26 @@ const getEmployeeIdsByProjectId = (projectId) => pool.query(
   [projectId]
 );
 
+const getProjectTaskCounts = (projectId) => pool.query(
+  `SELECT
+      COUNT(*) FILTER (WHERE status IN ('Pending', 'In Progress')) AS active_tasks,
+      COUNT(*) FILTER (WHERE status = 'Completed') AS completed_tasks,
+      COUNT(*) FILTER (WHERE status <> 'Completed' AND due_date < CURRENT_DATE) AS overdue_tasks
+   FROM tasks
+   WHERE project_id = $1`,
+  [projectId]
+);
+
+const isProjectMember = (projectId, employeeId) => pool.query(
+  `SELECT 1 FROM project_members WHERE project_id = $1 AND employee_id = $2 LIMIT 1`,
+  [projectId, employeeId]
+);
+
+const hasTaskAssignmentsForEmployee = (projectId, employeeId) => pool.query(
+  `SELECT 1 FROM tasks WHERE project_id = $1 AND assigned_to = $2 LIMIT 1`,
+  [projectId, employeeId]
+);
+
 const createTask = (project_id, assigned_to, assigned_by, task_title, description, priority, status, assigned_date, due_date) =>
   pool.query(`INSERT INTO tasks (project_id, assigned_to, assigned_by, task_title, title, employee_id, description, priority, status, assigned_date, due_date)
     VALUES ($1,$2,$3,$4::text,CAST($4::text AS varchar),$2,$5,$6,$7,$8,$9) RETURNING *`, [project_id, assigned_to, assigned_by, task_title, description, priority, status, assigned_date, due_date]);
@@ -35,4 +55,4 @@ const updateTaskStatus = (id, status) => pool.query(`UPDATE tasks SET status=$1,
   completed_date=CASE WHEN $2 = 'Completed' THEN COALESCE(completed_date, CURRENT_DATE) ELSE NULL END WHERE task_id=$3 RETURNING *`, [status, status, id]);
 const deleteTask = (id) => pool.query("DELETE FROM tasks WHERE task_id = $1 RETURNING *", [id]);
 
-module.exports = { getAllTasks, getTasksByEmployee, getTasksByManager, getTaskById, getEmployeeIdsByProjectId, createTask, updateTask, updateTaskStatus, deleteTask };
+module.exports = { getAllTasks, getTasksByEmployee, getTasksByManager, getTaskById, getEmployeeIdsByProjectId, getProjectTaskCounts, isProjectMember, hasTaskAssignmentsForEmployee, createTask, updateTask, updateTaskStatus, deleteTask };

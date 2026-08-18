@@ -7,9 +7,11 @@ const {
   deleteProject,
   getProjectById,
 } = require("../models/projectModel");
-const { getManagers } = require("../models/employeeModel");
+const { getManagers, getEmployeeById } = require("../models/employeeModel");
 const { getAllDepartments } = require("../models/departmentModel");
 const tasks = require("../models/taskModel");
+const allocations = require("../models/allocationModel");
+const projectMembers = require("../models/projectMemberModel");
 const notifications = require("../models/notificationModel");
 
 const PROJECT_STATUSES = ["Active", "Completed", "On Hold"];
@@ -51,6 +53,38 @@ const authorizeProjectAccess = (user = {}, action = "read") => {
   }
 
   return [1, 2, 3].includes(roleId);
+};
+
+const isProjectOwner = (user = {}, project = {}) => Number(user?.role_id) === 1 || (Number(user?.role_id) === 2 && Number(project?.manager_id) === Number(user?.employee_id));
+
+const canViewProjectMembers = async (user, projectId) => {
+  if (Number(user?.role_id) === 1) return true;
+
+  const project = await getProjectById(projectId);
+  if (!project.rows.length) return false;
+
+  if (Number(user?.role_id) === 2) {
+    return Number(project.rows[0].manager_id) === Number(user.employee_id);
+  }
+
+  const membership = await projectMembers.isProjectMember(projectId, user.employee_id);
+  return membership.rows.length > 0;
+};
+
+const getProjectSummary = (project) => {
+  const totalTasks = Number(project.task_count || 0);
+  const completedTasks = Number(project.completed_task_count || 0);
+  const overdueTasks = Number(project.overdue_task_count || 0);
+  const percentCompleted = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const riskLevel = project.status === "Completed" ? "healthy" : overdueTasks > 0 ? "risk" : percentCompleted >= 80 ? "healthy" : "watch";
+
+  return {
+    percentCompleted,
+    overdueTasks,
+    totalTasks,
+    completedTasks,
+    riskLevel,
+  };
 };
 
 const notifyProjectEmployees = async (projectId, title, message, notificationType) => {
@@ -271,9 +305,137 @@ const getProjectByIdController = async (req, res) => {
       return res.status(404).json({ success: false, message: "Project not found" });
     }
 
-    res.json({ success: true, project: result.rows[0] });
+    res.json({ success: true, project: { ...result.rows[0], ...getProjectSummary(result.rows[0]) } });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getProjectMembersController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!Number.isInteger(Number(id))) {
+      return res.status(400).json({ success: false, message: "Invalid project id." });
+    }
+
+    if (!(await canViewProjectMembers(req.user, Number(id)))) {
+      return res.status(403).json({ success: false, message: "Access denied." });
+    }
+
+    const result = await projectMembers.getProjectMembers(Number(id));
+    res.json({ success: true, members: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const addProjectMemberController = async (req, res) => {
+  try {
+    const projectId = Number(req.params.id);
+    const employeeId = Number(req.body.employee_id);
+    const roleInProject = req.body.role_in_project === "lead" ? "lead" : "member";
+
+    if (!Number.isInteger(projectId) || !Number.isInteger(employeeId)) {
+      return res.status(400).json({ success: false, message: "Project and employee are required." });
+    }
+
+    const project = await getProjectById(projectId);
+    if (!project.rows.length) return res.status(404).json({ success: false, message: "Project not found." });
+    if (!isProjectOwner(req.user, project.rows[0])) {
+      return res.status(403).json({ success: false, message: "Only admins or the project manager can manage members." });
+    }
+
+    const employee = await getEmployeeById(employeeId);
+    if (!employee.rows.length || Number(employee.rows[0].role_id) !== 3) {
+      return res.status(400).json({ success: false, message: "Select a valid employee." });
+    }
+
+    const result = await projectMembers.addProjectMember(projectId, employeeId, req.user.employee_id, roleInProject);
+    if (!result.rows.length) {
+      return res.status(409).json({ success: false, message: "This employee is already a project member." });
+    }
+
+    res.status(201).json({ success: true, member: result.rows[0] });
+  } catch (error) {
+    if (error.code === "23503") {
+      return res.status(400).json({ success: false, message: "Invalid project or employee reference." });
+    }
+
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const removeProjectMemberController = async (req, res) => {
+  try {
+    const projectId = Number(req.params.id);
+    const employeeId = Number(req.params.employeeId);
+
+    if (!Number.isInteger(projectId) || !Number.isInteger(employeeId)) {
+      return res.status(400).json({ success: false, message: "Invalid project or employee id." });
+    }
+
+    const project = await getProjectById(projectId);
+    if (!project.rows.length) return res.status(404).json({ success: false, message: "Project not found." });
+    if (!isProjectOwner(req.user, project.rows[0])) {
+      return res.status(403).json({ success: false, message: "Only admins or the project manager can manage members." });
+    }
+
+    const assignedTasks = await tasks.hasTaskAssignmentsForEmployee(projectId, employeeId);
+    if (assignedTasks.rows.length) {
+      return res.status(409).json({ success: false, message: "Reassign this member's tasks before removing them from the project." });
+    }
+
+    const result = await projectMembers.removeProjectMember(projectId, employeeId);
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, message: "Project member not found." });
+    }
+
+    res.json({ success: true, message: "Project member removed successfully." });
+  } catch (error) {
+    if (error.code === "23503") {
+      return res.status(409).json({ success: false, message: "Remove or reassign the member's tasks before removing them from the project." });
+    }
+
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getProjectAvailableEmployeesController = async (req, res) => {
+  try {
+    const projectId = Number(req.params.id);
+
+    if (!Number.isInteger(projectId)) {
+      return res.status(400).json({ success: false, message: "Invalid project id." });
+    }
+
+    if (!(await canViewProjectMembers(req.user, projectId))) {
+      return res.status(403).json({ success: false, message: "Access denied." });
+    }
+
+    const employees = await allocations.getAvailableEmployees(projectId);
+    res.json({ success: true, employees: employees.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getProjectSuggestedEmployeeController = async (req, res) => {
+  try {
+    const projectId = Number(req.params.id);
+
+    if (!Number.isInteger(projectId)) {
+      return res.status(400).json({ success: false, message: "Invalid project id." });
+    }
+
+    if (!(await canViewProjectMembers(req.user, projectId))) {
+      return res.status(403).json({ success: false, message: "Access denied." });
+    }
+
+    const employee = await allocations.suggestBestEmployee(projectId);
+    res.json({ success: true, employee });
+  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -310,6 +472,11 @@ module.exports = {
   editProject,
   removeProject,
   getProjectByIdController,
+  getProjectMembersController,
+  addProjectMemberController,
+  removeProjectMemberController,
+  getProjectAvailableEmployeesController,
+  getProjectSuggestedEmployeeController,
   normalizeProjectPayload,
   authorizeProjectAccess,
   validateProject,

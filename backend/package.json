@@ -5,7 +5,10 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "start:ml": "python -m uvicorn app:app --app-dir ../ai-service --host 127.0.0.1 --port 8000",
+    "start:full": "node startFullStack.js",
+    "dev": "nodemon src/server.js",
+    "seed:realistic": "node seedRealisticData.js"
   },
   "keywords": [],
   "author": "Ashmita Kurdekar",

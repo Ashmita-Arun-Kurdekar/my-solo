@@ -1,0 +1,56 @@
+// Create these measures in the bi_task_fact table.
+
+Total Tasks = COUNTROWS('bi_task_fact')
+
+Completed Tasks = SUM('bi_task_fact'[is_completed])
+
+Active Tasks =
+CALCULATE(
+    [Total Tasks],
+    'bi_task_fact'[status] IN { "Pending", "In Progress" }
+)
+
+Overdue Tasks = SUM('bi_task_fact'[is_overdue])
+
+Completion Rate = DIVIDE([Completed Tasks], [Total Tasks], 0)
+
+On-Time Completions = SUM('bi_task_fact'[completed_on_time])
+
+On-Time Rate = DIVIDE([On-Time Completions], [Completed Tasks], 0)
+
+Average Completion Days =
+AVERAGEX(
+    FILTER('bi_task_fact', NOT ISBLANK('bi_task_fact'[completion_days])),
+    'bi_task_fact'[completion_days]
+)
+
+At-Risk Projects =
+CALCULATE(
+    COUNTROWS('bi_project_performance'),
+    'bi_project_performance'[health] IN { "At Risk", "Watch" }
+)
+
+Available Employees =
+CALCULATE(
+    COUNTROWS('bi_employee_workload'),
+    'bi_employee_workload'[availability_status] = "Available"
+)
+
+Average Workload = AVERAGE('bi_employee_workload'[derived_workload_pct]) / 100
+
+AI Allocations = COUNTROWS('bi_allocation_outcomes')
+
+Allocation Success Rate =
+DIVIDE(
+    SUM('bi_allocation_outcomes'[completed_on_time]),
+    SUM('bi_allocation_outcomes'[completed_tasks]),
+    0
+)
+
+Task Health =
+SWITCH(
+    TRUE(),
+    [Overdue Tasks] = 0, "Healthy",
+    [Overdue Tasks] <= 5, "Watch",
+    "At Risk"
+)

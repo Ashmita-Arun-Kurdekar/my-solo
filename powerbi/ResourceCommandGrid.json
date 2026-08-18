@@ -1,0 +1,34 @@
+{
+  "name": "Resource Command Grid",
+  "dataColors": ["#B8FF5A", "#61D7E8", "#F2C94C", "#FF7B72", "#9B8AFB", "#6FCF97"],
+  "background": "#09110F",
+  "foreground": "#E8EEE9",
+  "tableAccent": "#B8FF5A",
+  "good": "#6FCF97",
+  "neutral": "#F2C94C",
+  "bad": "#FF7B72",
+  "maximum": "#B8FF5A",
+  "center": "#F2C94C",
+  "minimum": "#FF7B72",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [{"show": true, "color": {"solid": {"color": "#0D1714"}}, "transparency": 0}],
+        "border": [{"show": true, "color": {"solid": {"color": "#293A34"}}, "radius": 2}],
+        "title": [{"show": true, "fontFamily": "Segoe UI Semibold", "fontSize": 12, "fontColor": {"solid": {"color": "#E8EEE9"}}, "background": {"solid": {"color": "#0D1714"}}}],
+        "visualHeader": [{"show": true, "foreground": {"solid": {"color": "#819087"}}, "background": {"solid": {"color": "#0D1714"}}}]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [{"color": {"solid": {"color": "#09110F"}}, "transparency": 0}]
+      }
+    }
+  },
+  "textClasses": {
+    "title": {"fontFace": "Georgia", "fontSize": 24, "color": "#F1F4EF"},
+    "header": {"fontFace": "Segoe UI Semibold", "fontSize": 12, "color": "#E8EEE9"},
+    "label": {"fontFace": "Segoe UI", "fontSize": 10, "color": "#91A098"},
+    "callout": {"fontFace": "Segoe UI Semibold", "fontSize": 28, "color": "#B8FF5A"}
+  }
+}

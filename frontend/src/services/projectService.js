@@ -24,6 +24,31 @@ export const deleteProject = async (id) => {
   return response.data;
 };
 
+export const getProjectMembers = async (id) => {
+  const response = await API.get(`/projects/${id}/members`);
+  return response.data;
+};
+
+export const addProjectMember = async (projectId, payload) => {
+  const response = await API.post(`/projects/${projectId}/members`, payload);
+  return response.data;
+};
+
+export const removeProjectMember = async (projectId, employeeId) => {
+  const response = await API.delete(`/projects/${projectId}/members/${employeeId}`);
+  return response.data;
+};
+
+export const getAvailableEmployees = async (id) => {
+  const response = await API.get(`/projects/${id}/available-employees`);
+  return response.data;
+};
+
+export const suggestBestEmployee = async (id) => {
+  const response = await API.get(`/projects/${id}/suggested-employee`);
+  return response.data;
+};
+
 // Get Managers
 export const getManagers = async () => {
   const response = await API.get("/employees/managers");
